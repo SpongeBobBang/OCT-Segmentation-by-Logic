@@ -1,19 +1,22 @@
 """
-Quantify texture by feature vector, from Law's texture energy measures
+Quantify texture by feature vector, from Laws' texture energy measures
 Stefan, Yuzhao Heng
 """
-import numpy as np
-from PIL import Image, ImageFilter
 
-class TextureEnergyByLaw():
+from PIL import Image
+import numpy as np
+from scipy import ndimage
+
+class TextureEnergyByLaws():
     """
-    Implements Law's texture energy masks for quantifying texture for a single image
+    Implements Laws; texture energy masks for quantifying texture for a single image
     Works on grayscale images
     Returns a matrix of dimension of image, each element as vector
     """
     def __init__(self, path):
+        self.img = remove_illumination(Image.open(path), 10)
         self.init_masks()
-        self.load_img(path)
+        self.init_map_features()
         self.filter_img()
         self.get_feature_map()
     def init_masks(self):
@@ -22,41 +25,70 @@ class TextureEnergyByLaw():
         vector_edge = [-1, -2, 0, 2, 1]
         vector_spot = [-1, 0, 2, 0, -1]
         vector_ripple = [1, -4, 6, -4, 1]
-        self.i_name_vert = 0
-        self.i_name_hori = 1
         self.vectors = {"l": vector_level, "e": vector_edge, "s": vector_spot, "r": vector_ripple}
-        self.names_mask = ["ee", "ss", "rr", "el", "el", "rl", "se", "re", "rs"]
+        self.names_mask = [["le", "el"], ["lr", "rl"], ["es", "se"], ["ss"], ["rr"], ["ls", "sl"], \
+            ["ee"], ["er", "re"], ["sr", "rs"]]
         self.dimension_feature = len(self.names_mask)
-        self.masks = [None for i in range(self.dimension_feature)]
-        self.maps_features = [None for i in range(self.dimension_feature)]
-        for i in range(len(self.names_mask)):
-            self.masks[i] = self.get_mask(self.names_mask[i])
+        self.masks = [None for i in range(len(self.names_mask))]
+        self.imgs_feature = [None for i in range(self.dimension_feature)]
+        for i, name_mask in enumerate(self.names_mask):
+            self.masks[i] = self.get_mask(name_mask)
     def get_mask(self, name):
         """ Get the mask matrix based on name, corresponding to the vertical and horizontal matrix
         """
-        vector_vert = self.vectors[name[self.i_name_vert]]
-        vector_hori = self.vectors[name[self.i_name_hori]]
+        return self.get_mask_single(name) if self.is_single_mask(name) \
+            else self.get_mask_double(name)
+    def is_single_mask(self, e):
+        """ Check if the name of the mask makes a single mask or a mask pair """
+        # Left boolean for name of mask, right boolean for mask matrix
+        return len(e) == 1 or len(e) == 5
+    def get_mask_single(self, name):
+        """ Get the mask matrix if the name contrains 1 instance """
+        if not isinstance(name, str):
+            name = name[0]
+        vector_vert = self.vectors[name[0]]
+        vector_hori = self.vectors[name[1]]
         return np.dot(make_matrix_vertical(vector_vert), make_matrix_horizontal(vector_hori))
-    def load_img(self, path):
-        """ Load the image to get pixel values """
-        self.img = Image.open(path)
-        self.size_img = self.img.size
-        width, height = self.size_img
-        self.map_features = [[[] for y in range(height)] for x in range(width)]
-        self.features_filtered = [None for i in range(self.dimension_feature)]
+    def get_mask_double(self, name):
+        """ Get the mask matrix if the name contrains 2 instance """
+        return self.get_mask_single(name[0]), self.get_mask_single(name[1])
+    def init_map_features(self):
+        """ Initialize the dimension of map of features with dimensions of image """
+        width, height = self.img.size
+        self.map_features = [[[] for x in range(width)] for y in range(height)]
     def filter_img(self):
         """ Get texture feature vector for each pixel """
         for i, mask in enumerate(self.masks):
-            kernel = ImageFilter.Kernel(mask.shape, linearize_matrix(mask))
-            self.maps_features[i] = self.img.filter(kernel)
+            self.imgs_feature[i] = self.filter_by_mask(mask)
+    def filter_by_mask(self, mask):
+        """ Filter the image with mask """
+        if self.is_single_mask(mask):
+            return self.filter_by_1_mask(mask)
+        else:
+            img1 = self.filter_by_1_mask(mask[0])
+            img2 = self.filter_by_1_mask(mask[1])
+            return get_average_img(self.img, [img1, img2])
+    def filter_by_1_mask(self, mask):
+        """ Filter the image with 1 mask """
+        return Image.fromarray(convolve(self.img, mask))
     def get_feature_map(self):
         """ Combine the filtered images by masks, into feature vectors of one matrix """
         for i in range(self.dimension_feature):
-            matrix_features = self.maps_features[i].load()
-            for x in range(len(self.map_features)):
-                for y in range(len(self.map_features[x])):
-                    self.map_features[x][y].append(matrix_features[x, y])
+            matrix_feature = self.imgs_feature[i].load()
+            for y in range(len(self.map_features)):
+                for x in range(len(self.map_features[y])):
+                    self.map_features[y][x].append(matrix_feature[x, y])
         self.map_features = np.array(self.map_features)
+
+def get_pixel_values(img):
+    """ Get the pixel values of a grayscale image """
+    pixel_access = img.load()
+    width, height = img.size
+    pixels = [[None for y in range(height)] for x in range(width)]
+    for x, row in enumerate(pixels):
+        for y, e in enumerate(row):
+            pixels[x][y] = pixel_access[x, y]
+    return pixels
 
 def make_matrix_vertical(l):
     """ Get the matrix with dimension m*1 needed for m*m masks, from an 1D list """
@@ -70,14 +102,64 @@ def linearize_matrix(matrix):
     """ Convert a matrix to 1D list, to be fed into a Kernel object """
     return np.array(matrix).flatten()
 
-def extract_law_texture_features(img):
-    """ Get the feature vector map, using law's texture energy measures """
-    tebl = TextureEnergyByLaw(img)
+def is_grayscale_img(img):
+    """ Checks if an image is in grayscale or expected RGB """
+    return img.mode == "L"
+
+def remove_illumination(img, dimension_kernel):
+    """
+    Remove the effect of intensity in an image by subtracting the average of pixels in proximity
+    """
+    shape_kernel = ((dimension_kernel, dimension_kernel, 3), (dimension_kernel, dimension_kernel)) \
+        [is_grayscale_img(img)]
+    n_element = product(shape_kernel)
+    kernel = np.ones(n_element, dtype=np.float).reshape(shape_kernel)
+    img_local_avg = convolve(img, kernel)
+    a_img = np.array(img, dtype=np.float)
+    a_img_avg = np.array(img_local_avg)
+    a_img -= a_img_avg/n_element
+    a_img = np.array(np.round(a_img), dtype=np.uint8)
+    return Image.fromarray(a_img)
+
+def convolve(img, kernel):
+    """ Convoluve an image by a kernel """
+    a = np.array(img)
+    return ndimage.convolve(a, kernel)
+
+def product(l):
+    """ Get the product of a list or tuple """
+    prod = 1
+    for e in l:
+        prod *= e
+    return prod
+
+def get_average_img(img_skeleton, list_img):
+    """ Get the average image given a list of images of same shape """
+    l = len(list_img)
+    mode = img_skeleton.mode
+    width, height = img_skeleton.size
+    shape = ((height, width, 3), (height, width))[mode == "L"]
+    a_img_avg = np.zeros(shape, np.float)
+    for img in list_img:
+        a_img = np.array(img, dtype=np.float)
+        a_img_avg += a_img/l
+    a_img_avg = np.array(np.round(a_img_avg), dtype=np.uint8)
+    return Image.fromarray(a_img_avg, mode=mode)
+
+def extract_laws_texture_features(img):
+    """ Get the feature vector map, using laws texture energy measures """
+    tebl = TextureEnergyByLaws(img)
     return tebl.map_features
 
 if __name__ == "__main__":
-    PATH_FOLDER = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/Image/ori/"
-    NAME_IMG = "Abrams_Post_114_1_1_0_1.jpg"
-    # TEBL = TextureEnergyByLaw(PATH_FOLDER+NAME_IMG)
-    MAP_FEATURES = extract_law_texture_features(PATH_FOLDER+NAME_IMG)
-    print(MAP_FEATURES.shape)
+    # PATH_FOLDER = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/Image/ori/"
+    # NAME_IMG = "Abrams_Post_114_1_1_0_1.jpg"
+    # # TEBL = TextureEnergyByLaws(PATH_FOLDER+NAME_IMG)
+    # MAP_FEATURES = extract_laws_texture_features(PATH_FOLDER+NAME_IMG)
+    NAME = "Stefan with Art.jpg"
+    MAP = extract_laws_texture_features(NAME)
+    print("map", MAP)
+    print(MAP.shape)
+
+    IMG = Image.open(NAME)
+    remove_illumination(IMG, 20).show()
