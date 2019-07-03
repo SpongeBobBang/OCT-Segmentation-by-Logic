@@ -89,7 +89,7 @@ def print_matrix_elements(matrix):
     """ Print individual elements for a matrix """
     for row in matrix:
         for e in row:
-            print(e, end=" ")
+            print(e, end=", ")
         print()
 
 if __name__ == "__main__":

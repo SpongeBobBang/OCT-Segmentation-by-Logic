@@ -1,20 +1,19 @@
-"""
-Quantify texture by feature vector, from Laws' texture energy measures
-Stefan, Yuzhao Heng
-"""
+""" Quantify texture by feature vector, from Laws' texture energy measures
+    Stefan, Yuzhao Heng """
 
 from PIL import Image
 import numpy as np
 from scipy import ndimage
 
+import kmeans_clustering
+
 class TextureEnergyByLaws():
-    """
-    Implements Laws; texture energy masks for quantifying texture for a single image
-    Works on grayscale images
-    Returns a matrix of dimension of image, each element as vector
-    """
+    """ Implements Laws; texture energy masks for quantifying texture for a single image. Works on \
+        grayscale images. 
+        Returns a matrix of dimension of image, each element as vector """
     def __init__(self, path):
-        self.img = remove_illumination(Image.open(path), 10)
+        self.img = remove_illumination(Image.open(path), 15)
+        self.a_img = np.array(self.img)
         self.init_masks()
         self.init_map_features()
         self.filter_img()
@@ -34,8 +33,8 @@ class TextureEnergyByLaws():
         for i, name_mask in enumerate(self.names_mask):
             self.masks[i] = self.get_mask(name_mask)
     def get_mask(self, name):
-        """ Get the mask matrix based on name, corresponding to the vertical and horizontal matrix
-        """
+        """ Get the mask matrix based on name, corresponding to the vertical and horizontal matrix \
+            """
         return self.get_mask_single(name) if self.is_single_mask(name) \
             else self.get_mask_double(name)
     def is_single_mask(self, e):
@@ -70,7 +69,7 @@ class TextureEnergyByLaws():
             return get_average_img(self.img, [img1, img2])
     def filter_by_1_mask(self, mask):
         """ Filter the image with 1 mask """
-        return Image.fromarray(convolve(self.img, mask))
+        return Image.fromarray(convolve(self.a_img, mask))
     def get_feature_map(self):
         """ Combine the filtered images by masks, into feature vectors of one matrix """
         for i in range(self.dimension_feature):
@@ -103,28 +102,45 @@ def linearize_matrix(matrix):
     return np.array(matrix).flatten()
 
 def is_grayscale_img(img):
-    """ Checks if an image is in grayscale or expected RGB """
-    return img.mode == "L"
+    """ Checks if an Image or numpy array of an image is in grayscale or expected RGB """
+    if isinstance(img, Image):
+        return img.mode == "L"
+    elif isinstance(img, np.ndarray):
+        return len(img.shape) == 2
+    else:
+        return False
 
 def remove_illumination(img, dimension_kernel):
-    """
-    Remove the effect of intensity in an image by subtracting the average of pixels in proximity
-    """
-    shape_kernel = ((dimension_kernel, dimension_kernel, 3), (dimension_kernel, dimension_kernel)) \
-        [is_grayscale_img(img)]
+    """ Remove the effect of intensity in an image by subtracting the average of pixels in \
+        proximity """
+    a_img = np.array(img, dtype=np.float32)
+    if not is_grayscale_img(a_img):
+        a_img = a_img[..., :3] # Remove 4th transparency layer
+    shape_kernel = dimension_kernel, dimension_kernel
     n_element = product(shape_kernel)
-    kernel = np.ones(n_element, dtype=np.float).reshape(shape_kernel)
-    img_local_avg = convolve(img, kernel)
-    a_img = np.array(img, dtype=np.float)
-    a_img_avg = np.array(img_local_avg)
-    a_img -= a_img_avg/n_element
-    a_img = np.array(np.round(a_img), dtype=np.uint8)
+    kernel = np.ones(n_element, dtype=np.float32).reshape(shape_kernel)
+    a_img_sum = convolve(a_img, kernel)
+    a_img_avg = a_img_sum/n_element
+    a_img = np.subtract(a_img, a_img_avg, dtype=np.float32)
+    a_img = np.clip(a_img, 0, 2**8 - 1)
+    a_img = a_img.astype(np.uint8)
     return Image.fromarray(a_img)
 
-def convolve(img, kernel):
-    """ Convoluve an image by a kernel """
-    a = np.array(img)
-    return ndimage.convolve(a, kernel)
+def convolve(a_img, kernel):
+    """ Convoluve a matrix of potentially multiple dimension vectors by a kernel, returns a np \
+        array. Typically to an image """
+    if is_grayscale_img(a_img):
+        return convolve_1_channel(a_img, kernel)
+    else:
+        height, width = a_img.shape[:2]
+        as_img = np.split(a_img, [1, 2], axis=2)
+        for a_img_channel in as_img:
+            a_img_channel = a_img_channel.reshape(height, width)
+            a_img_channel = convolve_1_channel(a_img_channel, kernel)
+        return np.dstack(as_img)
+
+def convolve_1_channel(a_img, kernel):
+    return ndimage.convolve(a_img, kernel)
 
 def product(l):
     """ Get the product of a list or tuple """
@@ -158,8 +174,8 @@ if __name__ == "__main__":
     # MAP_FEATURES = extract_laws_texture_features(PATH_FOLDER+NAME_IMG)
     NAME = "Stefan with Art.jpg"
     MAP = extract_laws_texture_features(NAME)
-    print("map", MAP)
-    print(MAP.shape)
+    # print("map", MAP)
+    # print(MAP.shape)
 
     IMG = Image.open(NAME)
     remove_illumination(IMG, 20).show()
