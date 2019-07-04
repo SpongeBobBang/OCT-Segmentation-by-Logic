@@ -9,7 +9,7 @@ import kmeans_clustering
 
 class TextureEnergyByLaws():
     """ Implements Laws; texture energy masks for quantifying texture for a single image. Works on \
-        grayscale images. 
+        grayscale images.
         Returns a matrix of dimension of image, each element as vector """
     def __init__(self, path):
         self.img = remove_illumination(Image.open(path), 15)
@@ -80,7 +80,7 @@ class TextureEnergyByLaws():
         self.map_features = np.array(self.map_features)
 
 def get_pixel_values(img):
-    """ Get the pixel values of a grayscale image """
+    """ Get the pixel values of an image """
     pixel_access = img.load()
     width, height = img.size
     pixels = [[None for y in range(height)] for x in range(width)]
@@ -103,7 +103,7 @@ def linearize_matrix(matrix):
 
 def is_grayscale_img(img):
     """ Checks if an Image or numpy array of an image is in grayscale or expected RGB """
-    if isinstance(img, Image):
+    if isinstance(img, Image.Image):
         return img.mode == "L"
     elif isinstance(img, np.ndarray):
         return len(img.shape) == 2
@@ -140,6 +140,7 @@ def convolve(a_img, kernel):
         return np.dstack(as_img)
 
 def convolve_1_channel(a_img, kernel):
+    """ Convolve a matrix with elements of single dimension """
     return ndimage.convolve(a_img, kernel)
 
 def product(l):
@@ -176,6 +177,3 @@ if __name__ == "__main__":
     MAP = extract_laws_texture_features(NAME)
     # print("map", MAP)
     # print(MAP.shape)
-
-    IMG = Image.open(NAME)
-    remove_illumination(IMG, 20).show()

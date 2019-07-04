@@ -8,11 +8,8 @@ import numpy as np
 import cv2
 
 class KmeansClustering():
-    """
-    Implements k-means clustering
-    Works on a matrix of feature vectors
-    Returns a labeled grayscale image of clusters
-    """
+    """ Implements k-means clustering
+        Works on a matrix of feature vectors. Returns a labeled grayscale image of clusters """
     def __init__(self, name_img, map_features, k, \
         max_num_iteration, epsilon_change=0.01, num_attempt=5):
         self.name_img = name_img
@@ -28,10 +25,8 @@ class KmeansClustering():
         self.array_label = array_label
         self.centers = centers
     def get_criteria(self):
-        """
-        Get the criteria for clustering, namely set stop condition to either maximum iteration
-        reached, or change of vectors is small, and the values of both
-        """
+        """ Get the criteria for clustering, namely set stop condition to either maximum iteration \
+            reached, or change of vectors is small, and the values of both """
         return cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, \
             self.max_num_iteration, self.epsilon_change
     def cluster(self):
@@ -42,10 +37,8 @@ class KmeansClustering():
         """ Normalize compactness of clustering result, based on dimensions of matrix """
         return compactness / (self.shape_map[0] * self.shape_map[1])
     def get_normalized_array_label(self, color_depth=8):
-        """
-        Make the matrix of labels more distinctive by distributing labels evenly across a color
-        range
-        """
+        """ Make the matrix of labels more distinctive by distributing labels evenly across a \
+            color range """
         magnitude_top = 2**color_depth
         step = int(magnitude_top / len(self.centers))
         labels_normalized = np.array(list(range(0, magnitude_top, step)))
@@ -66,8 +59,8 @@ class KmeansClustering():
         write_image_label(self.get_matrix_label(array_label), self.name_img, path)
 
 def linearize_map_features(map_features, i_dimension=2):
-    """ Linearize the first 2 dimensions of the map to make a 2D table,
-    each entry consisting of a feature vector """
+    """ Linearize the first 2 dimensions of the map to make a 2D table, each entry consisting of a \
+        feature vector """
     map_features = np.array(map_features)
     dimension = map_features.shape[i_dimension]
     samples = map_features.reshape(-1, dimension)
@@ -85,20 +78,16 @@ def cluster_output_image_label(name_img, map_features, k, \
         name_img, map_features, k, max_num_iteration, epsilon_change, num_attempt)
     clustering.output_image_label()
 
-def print_matrix_elements(matrix):
+def matrix_elements_to_str(matrix):
     """ Print individual elements for a matrix """
+    string = ""
     for row in matrix:
         for e in row:
-            print(e, end=", ")
-        print()
+            string += str(e)+", "
+        string += "\n"
+    return string
 
 if __name__ == "__main__":
     NAME = "Stefan with Art.jpg"
     CLUSTER = KmeansClustering(NAME[:-4], cv2.imread(NAME), 4, 10)
     CLUSTER.output_image_label()
-
-    # matrix = CLUSTER.get_matrix_label(CLUSTER.get_normalized_array_label())
-    # print(matrix.shape)
-    # print(len(matrix))
-    # img_label = Image.fromarray(matrix)
-    # img_label.save(NAME+"_main.png")

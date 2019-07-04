@@ -1,12 +1,12 @@
 """ to test python generic methods """
 
 from itertools import combinations
-from PIL import Image, ImageFilter
+from PIL import Image
 import numpy as np
-import cv2
 from scipy import ndimage
+import cv2
 
-import law_texture_energy
+import laws_texture_energy
 import kmeans_clustering
 
 # IMG = cv2.imread('Stefan with Art.jpg')
@@ -128,7 +128,30 @@ import kmeans_clustering
 # img = law_texture_energy.remove_illumination(Image.open(NAME), 15)
 # img.save("sdad.png")
 
-t = (1, 2, 3)
-one, two = (1, 2, 3)[:2]
-print(one)
-print(two)
+# t = (1, 2, 3)
+# one, two = (1, 2, 3)[:2]
+# print(one)
+# print(two)
+
+# NAME = "Stefan with Art"
+# MAP = laws_texture_energy.extract_laws_texture_features(NAME+".jpg")
+# kmeans_clustering.cluster_output_image_label(NAME+"_laws", MAP, 4, 10)
+
+PATH_FOLDER_ORI = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/Image/ori/"
+
+def main():
+    """ Test """
+    # name = "Abrams_Post_114_1_1_0_1"
+    # img = laws_texture_energy.remove_illumination(Image.open(PATH_FOLDER_ORI+name+".jpg"), 15)
+    # img.save(name+"_ri.png")
+
+    # name = "Stefan with Art"
+    # img = laws_texture_energy.remove_illumination(Image.open(name+".jpg"), 15)
+    # img.save(name+"_ri.png")
+
+    name = "Tiger"
+    map_features = laws_texture_energy.extract_laws_texture_features(name+".png")
+    kmeans_clustering.cluster_output_image_label(name+"_laws", map_features, 4, 30)
+
+if __name__ == "__main__":
+    main()
