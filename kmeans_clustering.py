@@ -7,6 +7,8 @@ from PIL import Image
 import numpy as np
 import cv2
 
+TAG = "kc"
+
 class KmeansClustering():
     """ Implements k-means clustering
         Works on a matrix of feature vectors. Returns a labeled grayscale image of clusters """
@@ -69,14 +71,14 @@ def linearize_map_features(map_features, i_dimension=2):
 def write_image_label(matrix_label, name_img, path=""):
     """ Write a image file of labels, given a matrix of label values """
     img_label = Image.fromarray(matrix_label)
-    img_label.save(path + name_img+"_kc.png")
+    img_label.save(path + name_img+ "_"+TAG +".png")
 
 def cluster_output_image_label(name_img, map_features, k, \
-    max_num_iteration, epsilon_change=0.01, num_attempt=5):
+    max_num_iteration, epsilon_change=0.01, num_attempt=5, label_normalized=True):
     """ Write a image file of labels, given k-means clustering parameters """
     clustering = KmeansClustering(\
         name_img, map_features, k, max_num_iteration, epsilon_change, num_attempt)
-    clustering.output_image_label()
+    clustering.output_image_label(normalized=label_normalized)
 
 def matrix_elements_to_str(matrix):
     """ Print individual elements for a matrix """
@@ -87,7 +89,13 @@ def matrix_elements_to_str(matrix):
         string += "\n"
     return string
 
+PATH_FOLDER = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/img_sample/"
+
+def main():
+    """ test """
+    name = "Stefan with Art.jpg"
+    normalized = False
+    cluster_output_image_label(name, cv2.imread(PATH_FOLDER+name), 4, 30, normalized)
+
 if __name__ == "__main__":
-    NAME = "Stefan with Art.jpg"
-    CLUSTER = KmeansClustering(NAME[:-4], cv2.imread(NAME), 4, 10)
-    CLUSTER.output_image_label()
+    main()

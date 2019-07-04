@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 from scipy import ndimage
 
-import kmeans_clustering
+TAG = "laws"
 
 class TextureEnergyByLaws():
     """ Implements Laws; texture energy masks for quantifying texture for a single image. Works on \
@@ -168,12 +168,14 @@ def extract_laws_texture_features(img):
     tebl = TextureEnergyByLaws(img)
     return tebl.map_features
 
+PATH_FOLDER = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/img_sample/"
+
+def main():
+    """ test """
+    name_img = "Abrams_Post_114_1_1_0_1.jpg"
+    map_features = extract_laws_texture_features(PATH_FOLDER+name_img)
+    print("map", map_features)
+    print(map_features.shape)
+
 if __name__ == "__main__":
-    # PATH_FOLDER = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/Image/ori/"
-    # NAME_IMG = "Abrams_Post_114_1_1_0_1.jpg"
-    # # TEBL = TextureEnergyByLaws(PATH_FOLDER+NAME_IMG)
-    # MAP_FEATURES = extract_laws_texture_features(PATH_FOLDER+NAME_IMG)
-    NAME = "Stefan with Art.jpg"
-    MAP = extract_laws_texture_features(NAME)
-    # print("map", MAP)
-    # print(MAP.shape)
+    main()

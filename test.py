@@ -137,10 +137,10 @@ import kmeans_clustering
 # MAP = laws_texture_energy.extract_laws_texture_features(NAME+".jpg")
 # kmeans_clustering.cluster_output_image_label(NAME+"_laws", MAP, 4, 10)
 
-PATH_FOLDER_ORI = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/Image/ori/"
+PATH_FOLDER = laws_texture_energy.PATH_FOLDER
 
 def main():
-    """ Test """
+    """ test """
     # name = "Abrams_Post_114_1_1_0_1"
     # img = laws_texture_energy.remove_illumination(Image.open(PATH_FOLDER_ORI+name+".jpg"), 15)
     # img.save(name+"_ri.png")
