@@ -49,13 +49,13 @@ class KmeansClustering():
         magnitude_top = 2**color_depth
         step = int(magnitude_top / len(self.centers))
         labels_normalized = np.array(list(range(0, magnitude_top, step)))
-        print(self.array_label.shape)
-        print(self.array_label[330:345])
+        # print(self.array_label.shape)
+        # print(self.array_label[330:345])
         array_label = labels_normalized[self.array_label.flatten()]
         if not self.is_grayscale_matrix():
             array_label = array_label[2:]
             array_label = array_label[0::3] # Keep label of one channel so that color stands out
-            print(array_label[110:115])
+            # print(array_label[110:115])
         return np.uint8(array_label)
     def get_matrix_label(self, array_label, normalized=True):
         """ Get the matrix of labels, equivalent to dimension of a grayscale image """
