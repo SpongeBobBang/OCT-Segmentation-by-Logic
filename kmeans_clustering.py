@@ -26,6 +26,7 @@ class KmeansClustering():
         self.compatness_normalized = self.normalize_compactness(compactness)
         self.array_label = array_label
         self.centers = centers
+        # print(centers)
     def get_criteria(self):
         """ Get the criteria for clustering, namely set stop condition to either maximum iteration \
             reached, or change of vectors is small, and the values of both """
@@ -38,27 +39,43 @@ class KmeansClustering():
     def normalize_compactness(self, compactness):
         """ Normalize compactness of clustering result, based on dimensions of matrix """
         return compactness / (self.shape_map[0] * self.shape_map[1])
+    def get_centers(self):
+        """ Get the values of each cluster center """
+        return self.centers
     def get_normalized_array_label(self, color_depth=8):
         """ Make the matrix of labels more distinctive by distributing labels evenly across a \
-            color range """
+            color range.
+            Returns a grayscale matrix """
         magnitude_top = 2**color_depth
         step = int(magnitude_top / len(self.centers))
         labels_normalized = np.array(list(range(0, magnitude_top, step)))
-        return np.uint8(labels_normalized[self.array_label.flatten()])
-    def get_matrix_label(self, array_label):
+        print(self.array_label.shape)
+        print(self.array_label[330:345])
+        array_label = labels_normalized[self.array_label.flatten()]
+        if not self.is_grayscale_matrix():
+            array_label = array_label[2:]
+            array_label = array_label[0::3] # Keep label of one channel so that color stands out
+            print(array_label[110:115])
+        return np.uint8(array_label)
+    def get_matrix_label(self, array_label, normalized=True):
         """ Get the matrix of labels, equivalent to dimension of a grayscale image """
         # width, height = self.get_shape_matrix
-        return array_label.reshape(self.get_shape_matrix())
-    def get_shape_matrix(self):
+        return array_label.reshape(self.get_shape_matrix(normalized))
+    def get_shape_matrix(self, normalized):
         """ Get the shape of the original image from the map of features """
-        if len(self.shape_map) == 3: # Grayscale image with 1 color channel
+        if normalized:
             return self.shape_map[0], self.shape_map[1]
-        else: # RGB image with 3 color channel
-            return self.shape_map[0], self.shape_map[1], self.shape_map[3]
+        else:
+            if self.is_grayscale_matrix(): # Grayscale image with 1 color channel
+                return self.shape_map[0], self.shape_map[1]
+            else: # RGB image with 3 color channel
+                return self.shape_map[0], self.shape_map[1], self.shape_map[3]
+    def is_grayscale_matrix(self):
+        return len(self.shape_map) == 3
     def output_image_label(self, path="", normalized=True):
         """ Write a image file of labels, normalized or not, given current clustering object """
         array_label = (self.array_label, self.get_normalized_array_label())[normalized]
-        write_image_label(self.get_matrix_label(array_label), self.name_img, path)
+        write_image_label(self.get_matrix_label(array_label, normalized), self.name_img, path)
 
 def linearize_map_features(map_features, i_dimension=2):
     """ Linearize the first 2 dimensions of the map to make a 2D table, each entry consisting of a \
@@ -70,6 +87,8 @@ def linearize_map_features(map_features, i_dimension=2):
 
 def write_image_label(matrix_label, name_img, path=""):
     """ Write a image file of labels, given a matrix of label values """
+    # print(matrix_label.shape)
+    # print(matrix_label[0:15, 35:50])
     img_label = Image.fromarray(matrix_label)
     img_label.save(path + name_img+ "_"+TAG +".png")
 

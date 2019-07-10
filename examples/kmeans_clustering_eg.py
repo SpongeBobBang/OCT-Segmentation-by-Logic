@@ -4,7 +4,7 @@ from PIL import Image
 import numpy as np
 import cv2
 
-IMG = cv2.imread('Stefan with Art.jpg')
+IMG = cv2.imread('D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/img_sample/Stefan with Art.jpg')
 Z = IMG.reshape((-1, 3))
 Z = np.float32(Z)
 
@@ -21,8 +21,8 @@ print(CENTERS[a].flatten())
 # print(LABEL.flatten())
 RES2 = RES.reshape((IMG.shape))
 
-# cv2.imshow('res2', RES2)
+cv2.imshow('res2', RES2)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-Image.fromarray(RES2).save("kc.jpg")
+# Image.fromarray(RES2).save("kc.jpg")

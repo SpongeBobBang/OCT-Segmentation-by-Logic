@@ -4,6 +4,7 @@ from itertools import combinations
 from PIL import Image
 import numpy as np
 from scipy import ndimage
+import matplotlib.pyplot as plt
 import cv2
 
 import laws_texture_energy
@@ -149,9 +150,65 @@ def main():
     # img = laws_texture_energy.remove_illumination(Image.open(name+".jpg"), 15)
     # img.save(name+"_ri.png")
 
-    name = "Tiger"
-    map_features = laws_texture_energy.extract_laws_texture_features(name+".png")
-    kmeans_clustering.cluster_output_image_label(name+"_laws", map_features, 4, 30)
+    # name = "Tiger"
+    # map_features = laws_texture_energy.extract_laws_texture_features(name+".png")
+    # kmeans_clustering.cluster_output_image_label(name+"_laws", map_features, 4, 30)
+
+    # img = plt.imread("img_sample/Stefan with Art.jpg")
+    # plt.figure(figsize=(10, 15))
+    # plt.imshow(img)
+    # plt.show()
+
+    # a = np.array([[1, 1, 1], [2, 2, 2], [3, 3, 3], [4, 4, 4]])
+    # print(np.mean(a))
+    # print(np.mean(a, axis=0))
+    # print(np.mean(a, axis=1))
+
+    # img = Image.open("img_sample/Leaves.png")
+    # print(img.mode)
+    # mean_features = laws_texture_energy.extract_laws_texture_mean("img_sample/Leaves.png")
+    # print('ee:', mean_features[6], 'ss:', mean_features[3], 'rr:', mean_features[4])
+
+    # a = np.array([[1], [1], [1], [1], [1], [1], [1]])
+    # a = a.flatten()
+    # print(a)
+
+    # a = np.array([[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3,3 ], [4, 4, 4, 4]])
+    # print(a[0:3, 0:2])
+
+    # a = np.array([[13, 11,  8,  7], [11,  3, 11, 14], [16, 12, 14, 10], [15,  6, 10,  5]], dtype=np.float64)
+    # kernel = np.ones(9, dtype=np.float64).reshape(3, 3)
+    # kernel = kernel*(-2)
+    # print(ndimage.convolve(a, kernel))
+
+    # a_img = np.array(Image.open("img_sample/Leaves.png"), dtype=np.float64)
+    # as_img = np.split(a_img, [1, 2], axis=2)
+    # kernel = np.ones(9, dtype=np.float64).reshape(3, 3)
+    # kernel = kernel*10
+    # # print(laws_texture_energy.convolve(a_img, kernel))
+    # height, width = a_img.shape[:2]
+    # print(ndimage.convolve(as_img[0].reshape(height, width), kernel))
+
+    # arrays = [np.random.randn(20, 10) for _ in range(3)]
+    # print(np.stack(arrays, axis=2).shape)
+
+    # print(type(np.array(1)))
+
+    # samples = ["Leaves", "Leaves2", "Grass", "Brick", "Brick2", "Stone"]
+    # for sample in samples:
+    #     mean_features = laws_texture_energy.extract_laws_texture_mean("img_sample/"+sample+".png")
+    #     print(sample, 'ee:', mean_features[6], 'ss:', mean_features[3], 'rr:', mean_features[4])
+
+    # print("dshajd.jgp"[:-4])
+
+    # img = Image.open("Tiger_laws_kc.png")
+    # print(img.mode)
+
+    ary = np.arange(99)
+    # ary = [1, 2, 3, 4, 5]
+    ary = ary[2:]
+    ary = ary[0::3]
+    print(ary)
 
 if __name__ == "__main__":
     main()
