@@ -6,115 +6,100 @@ Stefan, Yuzhao Heng
 from PIL import Image
 import numpy as np
 import cv2
+import laws_texture_energy
 
 TAG = "kc"
 
 class KmeansClustering():
     """ Implements k-means clustering
         Works on a matrix of feature vectors. Returns a labeled grayscale image of clusters """
-    def __init__(self, name_img, map_features, k, \
+    def __init__(self, name_image, matrix_features, k, \
         max_num_iteration, epsilon_change=0.01, num_attempt=5):
-        self.name_img = name_img
+        self.name_img = name_image
+        self.shp_mtrx = matrix_features.shape
         self.k = k
-        self.max_num_iteration = max_num_iteration
-        self.epsilon_change = epsilon_change
-        self.num_attempt = num_attempt
-        self.shape_map = map_features.shape
-        self.samples = linearize_map_features(map_features)
-        self.criteria = self.get_criteria()
-        compactness, array_label, centers = self.cluster()
-        self.compatness_normalized = self.normalize_compactness(compactness)
-        self.array_label = array_label
-        self.centers = centers
-        # print(centers)
-    def get_criteria(self):
-        """ Get the criteria for clustering, namely set stop condition to either maximum iteration \
-            reached, or change of vectors is small, and the values of both """
-        return cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, \
-            self.max_num_iteration, self.epsilon_change
-    def cluster(self):
-        """ Perform the clustering """
-        return cv2.kmeans(\
-            self.samples, self.k, None, self.criteria, self.num_attempt, cv2.KMEANS_RANDOM_CENTERS)
+        smpls = linearize_matrix_features(matrix_features, self.shp_mtrx)
+        crtr = get_criteria(max_num_iteration, epsilon_change)
+        cmpctnss, arry_lbl, cntrs = kmeans_cluster(smpls, k, crtr, num_attempt)
+        self.compatness_normalized = self.normalize_compactness(cmpctnss)
+        self.arry_lbl = arry_lbl
+        self.cntrs = cntrs
     def normalize_compactness(self, compactness):
         """ Normalize compactness of clustering result, based on dimensions of matrix """
-        return compactness / (self.shape_map[0] * self.shape_map[1])
-    def get_centers(self):
-        """ Get the values of each cluster center """
-        return self.centers
-    def get_normalized_array_label(self, color_depth=8):
-        """ Make the matrix of labels more distinctive by distributing labels evenly across a \
-            color range.
-            Returns a grayscale matrix """
-        magnitude_top = 2**color_depth
-        step = int(magnitude_top / len(self.centers))
-        labels_normalized = np.array(list(range(0, magnitude_top, step)))
-        # print(self.array_label.shape)
-        # print(self.array_label[330:345])
-        array_label = labels_normalized[self.array_label.flatten()]
-        if not self.is_grayscale_matrix():
-            array_label = array_label[2:]
-            array_label = array_label[0::3] # Keep label of one channel so that color stands out
-            # print(array_label[110:115])
-        return np.uint8(array_label)
-    def get_matrix_label(self, array_label, normalized=True):
-        """ Get the matrix of labels, equivalent to dimension of a grayscale image """
-        # width, height = self.get_shape_matrix
-        return array_label.reshape(self.get_shape_matrix(normalized))
-    def get_shape_matrix(self, normalized):
-        """ Get the shape of the original image from the map of features """
-        if normalized:
-            return self.shape_map[0], self.shape_map[1]
-        else:
-            if self.is_grayscale_matrix(): # Grayscale image with 1 color channel
-                return self.shape_map[0], self.shape_map[1]
-            else: # RGB image with 3 color channel
-                return self.shape_map[0], self.shape_map[1], self.shape_map[3]
-    def is_grayscale_matrix(self):
-        return len(self.shape_map) == 3
-    def output_image_label(self, path="", normalized=True):
+        return compactness / (self.shp_mtrx[0] * self.shp_mtrx[1])
+    def output_image_label(self, path, normalized=True):
         """ Write a image file of labels, normalized or not, given current clustering object """
-        array_label = (self.array_label, self.get_normalized_array_label())[normalized]
-        write_image_label(self.get_matrix_label(array_label, normalized), self.name_img, path)
+        arry_lbl = self.get_array_label(normalized)
+        write_image_by_matrix(self.get_matrix_label(arry_lbl), self.name_img, path)
+    def get_array_label(self, normalized, color_depth=8):
+        """ Make the matrix of labels more distinctive by distributing labels evenly across a \
+            grayscale color range.
+            Returns a grayscale matrix """
+        arry_lbl = self.arry_lbl.flatten()
+        if normalized:
+            lmt_top = 2**color_depth
+            step = int(lmt_top / self.k)
+            lbls_nrmlzd = np.array(list(range(0, lmt_top, step)))
+            arry_lbl = lbls_nrmlzd[arry_lbl]
+        else:
+            arry_lbl = self.cntrs[arry_lbl]
+        return np.uint8(arry_lbl)
+    def get_matrix_label(self, array_label):
+        """ Get the matrix of labels, equivalent to dimension of a grayscale image """
+        return array_label.reshape(self.get_shape_matrix())
+    def get_shape_matrix(self):
+        """ Get the shape of the original image from the map of features """
+        if is_grayscale_matrix_shape(self.shp_mtrx): 
+            return self.shp_mtrx[:2]
+        else: # RGB image with 3 color channel
+            return self.shp_mtrx[0], self.shp_mtrx[1], self.shp_mtrx[3]
 
-def linearize_map_features(map_features, i_dimension=2):
-    """ Linearize the first 2 dimensions of the map to make a 2D table, each entry consisting of a \
-        feature vector """
-    map_features = np.array(map_features)
-    dimension = map_features.shape[i_dimension]
-    samples = map_features.reshape(-1, dimension)
-    return np.float32(samples)
+def linearize_matrix_features(matrix_features, shape_matrix):
+    """ Linearize the first 2 dimensions of the matrix, so that each entry consisting of a feature \
+        vector """
+    hght, wdth = shape_matrix[:2]
+    # Has more than 1 channels
+    # Only changes shape of ndarray when each pixel element is more than 1 dimension
+    if not is_grayscale_matrix_shape(shape_matrix):
+        mtrx_ftrs = [[None for x in range(wdth)] for y in range(hght)]
+        for y, row in enumerate(matrix_features):
+            for x, e in enumerate(row):
+                mtrx_ftrs[y][x] = e.flatten()
+        matrix_features = np.array(mtrx_ftrs)
+    return matrix_features.reshape(hght*wdth, -1).astype(np.float32)
 
-def write_image_label(matrix_label, name_img, path=""):
+def is_grayscale_matrix_shape(shape_matrix):
+    """ Checks if the image, from shape of a given matrix is in grayscale or expected RGB """
+    return len(shape_matrix) == 3
+
+def get_criteria(max_num_iteration, epsilon_change):
+    """ Get the criteria for clustering, namely set stop condition to either maximum iteration \
+        reached, or change of vectors is small, and the values of both """
+    return cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, max_num_iteration, epsilon_change
+
+def kmeans_cluster(samples, k, criteria, num_attempt):
+    """ Perform k-means clustering """
+    return cv2.kmeans(samples, k, None, criteria, num_attempt, cv2.KMEANS_RANDOM_CENTERS)
+
+def write_image_by_matrix(matrix, name_img, path):
     """ Write a image file of labels, given a matrix of label values """
-    # print(matrix_label.shape)
-    # print(matrix_label[0:15, 35:50])
-    img_label = Image.fromarray(matrix_label)
-    img_label.save(path + name_img+ "_"+TAG +".png")
+    img_lbl = Image.fromarray(matrix)
+    img_lbl.save(path+name_img+ "_"+TAG +".png")
 
-def cluster_output_image_label(name_img, map_features, k, \
-    max_num_iteration, epsilon_change=0.01, num_attempt=5, label_normalized=True):
+def cluster_output_image_label(name_image, matrix_features, k, \
+    max_num_iteration, epsilon_change=0.01, num_attempt=5, label_normalized=True, path=""):
     """ Write a image file of labels, given k-means clustering parameters """
-    clustering = KmeansClustering(\
-        name_img, map_features, k, max_num_iteration, epsilon_change, num_attempt)
-    clustering.output_image_label(normalized=label_normalized)
+    clstrng = KmeansClustering(\
+        name_image, matrix_features, k, max_num_iteration, epsilon_change, num_attempt)
+    clstrng.output_image_label(path, label_normalized)
 
-def matrix_elements_to_str(matrix):
-    """ Print individual elements for a matrix """
-    string = ""
-    for row in matrix:
-        for e in row:
-            string += str(e)+", "
-        string += "\n"
-    return string
-
-PATH_FOLDER = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/img_sample/"
+URI_SAMPLES = laws_texture_energy.URI_SAMPLES
 
 def main():
     """ test """
-    name = "Stefan with Art.jpg"
+    name = "Headshot.jpg"
     normalized = False
-    cluster_output_image_label(name, cv2.imread(PATH_FOLDER+name), 4, 30, normalized)
+    cluster_output_image_label(name[:-4], cv2.imread(URI_SAMPLES+name), 4, 30, normalized)
 
 if __name__ == "__main__":
     main()

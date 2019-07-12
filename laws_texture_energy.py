@@ -11,122 +11,89 @@ class TextureEnergyByLaws():
     """ Implements Laws; texture energy masks for quantifying texture for a single image. Works on \
         grayscale images.
         Returns a matrix of dimension of image, each element as vector """
-    def __init__(self, uri, radius_illumination=15):
-        self.img = remove_illumination(Image.open(uri), radius_illumination)
-        # self.img = Image.open(uri)
-        self.a_img = np.array(self.img)
-        self.init_masks()
-        self.init_map_features()
-        self.filter_img()
-        self.sum_texture_energy()
-        self.get_feature_map()
-    def init_masks(self):
-        """ Get the 9 convolution masks to compute texture energy """
-        vector_level = [1, 4, 6, 4, 1]
-        vector_edge = [-1, -2, 0, 2, 1]
-        vector_spot = [-1, 0, 2, 0, -1]
-        vector_ripple = [1, -4, 6, -4, 1]
-        self.vectors = {"l": vector_level, "e": vector_edge, "s": vector_spot, "r": vector_ripple}
-        self.names_mask = [["le", "el"], ["lr", "rl"], ["es", "se"], ["ss"], ["rr"], ["ls", "sl"], \
+    def __init__(self, matrix_image, radius_illumination=15):
+        self.mtrx_img = remove_illumination(matrix_image, radius_illumination)
+        self.init_waveforms()
+        self.filter_waveforms()
+        self.filter_sum()
+        self.get_matrix_energies()
+    def init_waveforms(self):
+        """ Get the 9 convolution masks of waveforms to compute texture energy """
+        vctr_level = [1, 4, 6, 4, 1]
+        vctr_edge = [-1, -2, 0, 2, 1]
+        vctr_spot = [-1, 0, 2, 0, -1]
+        vctr_ripple = [1, -4, 6, -4, 1]
+        self.vctrs = {"l": vctr_level, "e": vctr_edge, "s": vctr_spot, "r": vctr_ripple}
+        names_wvfrm = [["le", "el"], ["lr", "rl"], ["es", "se"], ["ss"], ["rr"], ["ls", "sl"], \
             ["ee"], ["er", "re"], ["sr", "rs"]]
-        self.dimension_feature = len(self.names_mask)
-        self.masks = [None for i in range(len(self.names_mask))]
-        self.imgs_feature = [None for i in range(self.dimension_feature)]
-        self.maps_energy = [None for i in range(self.dimension_feature)]
-        for i, name_mask in enumerate(self.names_mask):
-            self.masks[i] = self.get_mask(name_mask)
-    def get_mask(self, name):
-        """ Get the mask matrix based on name, corresponding to the vertical and horizontal matrix \
+        self.dmnsn_ftr = len(names_wvfrm) # Dimension/Number of features
+        self.wvfrms = []
+        for name_wvfrm in names_wvfrm:
+            self.wvfrms.append(self.get_waveforms(name_wvfrm))
+        self.mtrxs_ftr = [] # List of matrices by features
+        self.mtrxs_enrg = [] # List of matrices of energy measures
+    def get_waveforms(self, name):
+        """ Get the 2D mask matrix based on name, corresponding to the vertical and horizontal \
+            vector """
+        return self.get_waveform_single(name[0]) if self.is_single_waveform_name(name) \
+            else self.get_waveform_double(name)
+    def is_single_waveform_name(self, l):
+        """ Check if the name of the mask makes a single mask or a mask pair, given the name list \
             """
-        return self.get_mask_single(name) if self.is_single_mask(name) \
-            else self.get_mask_double(name)
-    def is_single_mask(self, e):
-        """ Check if the name of the mask makes a single mask or a mask pair """
-        # For name of mask, or mask matrix
-        if isinstance(e, list):
-            return len(e) == 1
-        elif isinstance(e, np.ndarray):
-            return len(e) == 5
-        else:
-            return False
-    def get_mask_single(self, name):
-        """ Get the mask matrix if the name contrains 1 instance """
-        if not isinstance(name, str):
-            name = name[0]
-        vector_vert = self.vectors[name[0]]
-        vector_hori = self.vectors[name[1]]
-        return np.dot(make_matrix_vertical(vector_vert), make_matrix_horizontal(vector_hori))
-    def get_mask_double(self, name):
+        return len(l) == 1
+    def get_waveform_single(self, name):
+        """ Get the 2D convolutional waveform mask from the name string """
+        return get_mask_2d(self.vctrs[name[0]], self.vctrs[name[1]])
+    def get_waveform_double(self, name):
         """ Get the mask matrix if the name contrains 2 instance """
-        return self.get_mask_single(name[0]), self.get_mask_single(name[1])
-    def init_map_features(self):
-        """ Initialize the dimension of map of features with dimensions of image """
-        width, height = self.img.size
-        self.map_features = [[[] for x in range(width)] for y in range(height)]
-    def filter_img(self):
+        return self.get_waveform_single(name[0]), self.get_waveform_single(name[1])
+    def filter_waveforms(self):
         """ Get texture feature vector for each pixel """
-        for i, mask in enumerate(self.masks):
-            self.imgs_feature[i] = self.filter_by_mask(mask)
-    def filter_by_mask(self, mask):
-        """ Filter the image with mask """
-        if self.is_single_mask(mask):
-            return self.filter_by_1_mask(mask)
+        for wvfrm in self.wvfrms:
+            self.mtrxs_ftr.append(self.filter_by_waveform(wvfrm))
+    def filter_by_waveform(self, waveform):
+        """ Filter the image with laws masks """
+        if self.is_single_waveform(waveform):
+            return self.filter_by_1_waveform(waveform)
         else:
-            img1 = self.filter_by_1_mask(mask[0])
-            img2 = self.filter_by_1_mask(mask[1])
-            # return get_average_img(self.img, [img1, img2])
-            return [img1, img2]
-    def filter_by_1_mask(self, mask):
+            return self.filter_by_1_waveform(waveform[0]), self.filter_by_1_waveform(waveform[1])
+    def is_single_waveform(self, e):
+        """ Check if the name of the mask makes a single mask or a mask pair, given the mask \
+            matrix """
+        # The element of masks can be either ndarray or tuple of ndarray
+        return isinstance(e, np.ndarray)
+    def filter_by_1_waveform(self, waveform):
         """ Filter the image with 1 mask """
-        a_img = self.a_img.astype(int)
-        a_img = convolve(a_img, mask) # Results can be negative and should be 
-        # a_img = np.clip(a_img, 0, 2**8 - 1)
-        # print(a_img[20:25, 20:25])
-        # Image.fromarray(a_img.astype(np.uint8)).show()
-        # print(a_img[20:25, 20:25])
-        # print(a_img.shape)
-        return a_img
-    def sum_texture_energy(self):
+        mtrx_img = self.mtrx_img.astype(int) # Results can be negative and should be
+        mtrx_img = convolve(mtrx_img, waveform)
+        return mtrx_img
+    def filter_sum(self):
         """ Get the texture energy map by getting the sum of pixel values in proximity """
-        for i, img_feature in enumerate(self.imgs_feature):
-            # print(i, img_feature)
-            self.maps_energy[i] = self.filter_by_sum(img_feature, 15)
-            # print(self.maps_energy[i].shape)
-    def is_single_img_feature(self, img_feature):
+        for mtrx_ftr in self.mtrxs_ftr:
+            self.mtrxs_enrg.append(self.filter_by_sum(mtrx_ftr, 15))
+    def filter_by_sum(self, matrix_feature, dimension_kernel):
+        """ Filter each texture feature by getting regional sum """
+        if self.is_single_matrix_feature(matrix_feature):
+            return sum_region(matrix_feature, dimension_kernel)
+        else:
+            mtrx1_img = sum_region(matrix_feature[0], dimension_kernel)
+            mtrx2_img = sum_region(matrix_feature[1], dimension_kernel)
+            mtrx1_img = mtrx1_img.astype(np.float64)
+            mtrx2_img = mtrx2_img.astype(np.float64)
+            return get_average_matrix(mtrx1_img.shape, [mtrx1_img, mtrx2_img])
+    def is_single_matrix_feature(self, matrix_feature):
         """ Check if the element of filtered images by mask contains one image """
         # Can be either an Image object, or a list of Image objects
-        return isinstance(img_feature, np.ndarray)
-        # return len(img_feature) != 2
-    def filter_by_sum(self, img_feature, dimension_kernel):
-        """ Filter each texture feature by getting regional sum """
-        if self.is_single_img_feature(img_feature):
-            # print(sum_region(img_feature, dimension_kernel).shape)
-            return sum_region(img_feature, dimension_kernel)
-        else:
-            a_img1 = sum_region(img_feature[0], dimension_kernel)
-            a_img2 = sum_region(img_feature[1], dimension_kernel)
-            return get_average_matrix(a_img1.shape, [a_img1, a_img2])
-    def get_feature_map(self):
+        return isinstance(matrix_feature, np.ndarray)
+    def get_matrix_energies(self):
         """ Combine the filtered images by masks, into feature vectors of one matrix """
-        for i in range(self.dimension_feature):
-            matrix_feature = self.maps_energy[i]
-            # print(i, matrix_feature == None)
-            # print(matrix_feature.shape)
-            for y in range(len(self.map_features)):
-                for x in range(len(self.map_features[y])):
-                    # print(self.map_features[y][x])
-                    self.map_features[y][x].append(matrix_feature[y][x])
-        self.map_features = np.array(self.map_features)
-
-def get_pixel_values(img):
-    """ Get the pixel values of an image """
-    pixel_access = img.load()
-    width, height = img.size
-    pixels = [[None for y in range(height)] for x in range(width)]
-    for x, row in enumerate(pixels):
-        for y, e in enumerate(row):
-            pixels[x][y] = pixel_access[x, y]
-    return pixels
+        hght, wdth = self.mtrx_img.shape[:2]
+        self.mtrx_enrgs = [[[] for x in range(wdth)] for y in range(hght)]
+        for mtrx_enrg in self.mtrxs_enrg:
+            for y in range(len(self.mtrx_enrgs)):
+                for x in range(len(self.mtrx_enrgs[y])):
+                    self.mtrx_enrgs[y][x].append(mtrx_enrg[y][x])
+        self.mtrx_enrgs = np.array(self.mtrx_enrgs)
 
 def make_matrix_vertical(l):
     """ Get the matrix with dimension m*1 needed for m*m masks, from an 1D list """
@@ -136,84 +103,50 @@ def make_matrix_horizontal(l):
     """ Get the matrix with dimension 1*n needed for n*n masks, from an 1D list """
     return np.array(l).reshape(1, -1)
 
-def linearize_matrix(matrix):
-    """ Convert a matrix to 1D list, to be fed into a Kernel object """
-    return np.array(matrix).flatten()
+def get_mask_2d(vector1_1d, vector2_1d):
+    """ Get the 2D matrix product from 2 1D vectors """
+    return np.dot(make_matrix_vertical(vector1_1d), make_matrix_horizontal(vector2_1d))
 
-def is_grayscale_img(img):
+def convolve(matrix_image, kernel):
+    """ Convoluve an image matrix of potentially multiple dimension vectors by a kernel, returns a \
+        np array """
+    if is_grayscale_matrix(matrix_image):
+        return convolve_1_channel(matrix_image, kernel)
+    else:
+        hght, wdth = matrix_image.shape[:2]
+        mtrxs_img = np.split(matrix_image, [1, 2], axis=2)
+        for i, mtrx_img_channel in enumerate(mtrxs_img):
+            mtrx_img_channel = mtrx_img_channel.flatten().reshape(hght, wdth)
+            mtrxs_img[i] = convolve_1_channel(mtrx_img_channel, kernel)
+        return np.stack(mtrxs_img, axis=2).reshape(hght, wdth, 3)
+
+def is_grayscale_matrix(matrix_image):
     """ Checks if an Image or numpy array of an image is in grayscale or expected RGB """
-    if isinstance(img, Image.Image):
-        return img.mode == "L"
-    elif isinstance(img, np.ndarray):
-        return len(img.shape) == 2
+    if isinstance(matrix_image, Image.Image):
+        return matrix_image.mode == "L"
+    elif isinstance(matrix_image, np.ndarray):
+        return len(matrix_image.shape) == 2
     else:
         return False
 
-def remove_illumination(img, dimension_kernel):
-    """ Remove the effect of intensity in an image by subtracting the average of pixels in \
-        proximity """
-    a_img = np.array(img, dtype=np.float32)
-    if not is_grayscale_img(a_img):
-        a_img = a_img[..., :3] # Remove 4th transparency layer
-    shape_kernel = dimension_kernel, dimension_kernel
-    n_element = product(shape_kernel)
-    kernel = np.ones(n_element, dtype=np.float32).reshape(shape_kernel)
-    a_img_sum = convolve(a_img, kernel)
-    a_img_avg = a_img_sum/n_element
-    a_img = np.subtract(a_img, a_img_avg, dtype=np.float32)
-    a_img = np.clip(a_img, 0, 2**8 - 1)
-    a_img = a_img.astype(np.uint8)
-    return Image.fromarray(a_img)
-
-def sum_region(img, dimension_kernel):
-    """ Filter an image where pixel values are regional sum """
-    a_img = np.array(img, dtype=np.float64)
-    if not is_grayscale_img(a_img):
-        a_img = a_img[..., :3] # Remove 4th transparency layer for RGB image
-    shape_kernel = dimension_kernel, dimension_kernel
-    n_element = product(shape_kernel)
-    kernel = np.ones(n_element, dtype=np.float64).reshape(shape_kernel)
-    # kernel = kernel*67
-    a = convolve(a_img, kernel)
-    # print(a[55:60, 55:60])
-    # kernel2 = np.array([[0, 0, 0], [0, 100, 0], [0, 0, 0]])
-    # print(kernel2.dtype)
-    p = convolve(a_img, kernel)
-    # if p.dtype == np.float64:
-    #     print(p[20:25, 20:25])
-    return convolve(a_img, kernel)
-
-def convolve(a_img, kernel):
-    # if a_img.dtype == np.float64:
-    #     print(a_img.dtype)
-    """ Convoluve an image matrix of potentially multiple dimension vectors by a kernel, returns a \
-        np array """
-    # if not with_limit:
-    #     a_img = np.array(a_img, dtype=np.float64)
-    if is_grayscale_img(a_img):
-        return convolve_1_channel(a_img, kernel)
-    else:
-        height, width = a_img.shape[:2]
-        as_img = np.split(a_img, [1, 2], axis=2)
-        for i, a_img_channel in enumerate(as_img):
-            as_img[i] = a_img_channel.flatten()
-            as_img[i] = a_img_channel.reshape(height, width)
-            as_img[i] = convolve_1_channel(as_img[i], kernel)
-            # # print(as_img[i][20:25, 20:25])
-            # if as_img[i].dtype == np.float64:
-            #     print(as_img[i].dtype, "asda")
-            #     print(as_img[i][20:25, 20:25])
-        # if np.dstack(as_img).dtype == np.float64:
-            # print("dsajkd", np.stack(as_img, axis=2).reshape(height, width, 3)[0][20:25, 20:25])
-        return np.stack(as_img, axis=2).reshape(height, width, 3)
-
 def convolve_1_channel(a_img, kernel):
-    # if a_img.dtype == np.float64:
-    #     print(a_img.dtype)
-    #     print(kernel)
-    #     print(ndimage.convolve(a_img, kernel)[20:25, 20:25])
     """ Convolve a matrix with elements of single dimension """
     return ndimage.convolve(a_img, kernel)
+
+def remove_illumination(matrix_image, dimension_kernel):
+    """ Remove the effect of intensity in an image by subtracting the average of pixels in \
+        proximity """
+    matrix_image = np.array(matrix_image, dtype=np.float64)
+    if not is_grayscale_matrix(matrix_image):
+        matrix_image = matrix_image[..., :3] # Remove 4th transparency layer
+    shp_krnl = dimension_kernel, dimension_kernel
+    num_elmnt = product(shp_krnl)
+    krnl = np.ones(num_elmnt, dtype=np.float64).reshape(shp_krnl)
+    mtrx_img_sum = convolve(matrix_image, krnl)
+    mtrx_img_avg = mtrx_img_sum/num_elmnt
+    matrix_image = np.subtract(matrix_image, mtrx_img_avg, dtype=np.float64)
+    matrix_image = np.clip(matrix_image, 0, 2**8 - 1)
+    return matrix_image.astype(np.uint8)
 
 def product(l):
     """ Get the product of a list or tuple """
@@ -222,65 +155,58 @@ def product(l):
         prod *= e
     return prod
 
-def get_average_img(img_skeleton, list_img):
-    """ Get the average image given a list of images of same shape """
-    l = len(list_img)
-    mode = img_skeleton.mode
-    width, height = img_skeleton.size
-    shape = ((height, width, 3), (height, width))[mode == "L"]
-    a_img_avg = np.zeros(shape, np.float)
-    for img in list_img:
-        a_img = np.array(img, dtype=np.float)
-        a_img_avg += a_img/l
-    a_img_avg = np.array(np.round(a_img_avg), dtype=np.uint8)
-    return Image.fromarray(a_img_avg, mode=mode)
+def sum_region(matrix_image, dimension_kernel):
+    """ Filter a matrix of image where pixel values are regional sum """
+    if not is_grayscale_matrix(matrix_image):
+        matrix_image = matrix_image[..., :3] # Remove 4th transparency layer for RGB image
+    shp_kernel = dimension_kernel, dimension_kernel
+    num_elmnt = product(shp_kernel)
+    krnl = np.ones(num_elmnt).reshape(shp_kernel)
+    return convolve(matrix_image, krnl)
 
-def get_average_matrix(shape, list_img):
-    """ Get the average image given a list of images of same shape """
-    l = len(list_img)
-    # mode = img_skeleton.mode
-    # width, height = img_skeleton.size
-    # shape = ((height, width, 3), (height, width))[mode == "L"]
-    a_img_avg = np.zeros(shape, np.float)
-    for img in list_img:
-        a_img = np.array(img, dtype=np.float)
-        a_img_avg += a_img/l
-    a_img_avg = np.array(np.round(a_img_avg), dtype=np.uint8)
-    return a_img_avg
+def get_average_matrix(shape, matrices):
+    """ Get the average matrix given a list of matrices images of same shape """
+    num_elmnt = len(matrices)
+    mtrx_avg = np.zeros(shape)
+    for mtrx in matrices:
+        mtrx = np.array(mtrx)
+        mtrx_avg += mtrx/num_elmnt
+    mtrx_avg = np.array(np.round(mtrx_avg))
+    return mtrx_avg
 
-def extract_laws_texture_map(uri_img, radius_illumination=15):
+def extract_laws_energy_matrix(matrix_image, radius_illumination=15):
     """ Get the feature vector map, using laws texture energy measures """
-    tebl = TextureEnergyByLaws(uri_img, radius_illumination)
-    return tebl.map_features
+    tebl = TextureEnergyByLaws(matrix_image, radius_illumination)
+    return tebl.mtrx_enrgs
 
-def extract_laws_texture_mean(uri_img, radius_illumination=15):
+def extract_laws_energy_mean(matrix_image, radius_illumination=15):
     """ Get the average for each feature vector dimension across an image """
-    map_features = extract_laws_texture_map(uri_img, radius_illumination)
-    if is_grayscale_img(Image.open(uri_img)):
-        return extract_laws_texture_mean_1_channel(map_features)
+    mtrx_enrgs = extract_laws_energy_matrix(matrix_image, radius_illumination)
+    if is_grayscale_matrix(matrix_image):
+        return extract_laws_enery_mean_1_channel(mtrx_enrgs)
     else:
-        map_features_channels = np.split(map_features, [1, 2], axis=3)
-        means_channel = []
-        for map_features_channel in map_features_channels:
-            means_channel.append(extract_laws_texture_mean_1_channel(map_features_channel))
-        return np.mean(means_channel, axis=0)
+        mtrx_enrgs_chnnls = np.split(mtrx_enrgs, [1, 2], axis=3)
+        means_chnnl = []
+        for mtrx_enrgs_chnnl in mtrx_enrgs_chnnls:
+            means_chnnl.append(extract_laws_enery_mean_1_channel(mtrx_enrgs_chnnl))
+        return np.mean(means_chnnl, axis=0)
 
-def extract_laws_texture_mean_1_channel(map_features):
+def extract_laws_enery_mean_1_channel(matrix_energies):
     """ Get the average for each feature vector dimension across one channel of an image """
-    map_features = np.absolute(map_features)
-    height, width, dimension = map_features.shape[:3]
-    map_features = map_features.flatten()
-    map_features = map_features.reshape(height*width, dimension)
-    return np.mean(map_features, axis=1)
+    matrix_energies = np.absolute(matrix_energies)
+    hght, wdth, dmnsn = matrix_energies.shape[:3]
+    matrix_energies = matrix_energies.flatten()
+    matrix_energies = matrix_energies.reshape(hght*wdth, dmnsn)
+    return np.mean(matrix_energies, axis=1)
 
-PATH_FOLDER = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/img_sample/"
+URI_SAMPLES = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/img_sample/"
 
 def main():
     """ test """
     name_img = "Abrams_Post_114_1_1_0_1.jpg"
-    map_features = extract_laws_texture_map(PATH_FOLDER+name_img)
-    print("map", map_features)
-    print(map_features.shape)
+    mtrx_enrg = extract_laws_energy_matrix(URI_SAMPLES+name_img)
+    print("map", mtrx_enrg)
+    print(mtrx_enrg.shape)
 
 if __name__ == "__main__":
     main()

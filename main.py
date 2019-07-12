@@ -4,11 +4,13 @@ For segmenting lumen from OCT images
 Stefan, Yuzhao Heng
 """
 
+from PIL import Image
+import numpy as np
 import laws_texture_energy
 import kmeans_clustering
 
 FILE_EXTENSION_OCT = ".jpg"
-PATH_FOLDER = laws_texture_energy.PATH_FOLDER
+URI_SAMPLES = laws_texture_energy.URI_SAMPLES
 
 SUFFIX_TEXTURE_LAW = "_" + laws_texture_energy.TAG
 
@@ -18,12 +20,12 @@ NAMES_IMG = {"OCT": "Abrams_Post_114_1_1_0_1.jpg", "Me": "Stefan with Art.jpg", 
 def main():
     """ Try result, quantifying texture with law's texture energy measure, segmenting image with \
         k-means clusterting """
-    name_img = NAMES_IMG["Benchmark_s"]
+    name_img = NAMES_IMG["Benchmark_t"]
+    img = Image.open(URI_SAMPLES + name_img)
+    mtrx_img = np.array(img)
+    map_features = laws_texture_energy.extract_laws_energy_matrix(mtrx_img)
     k = 4
     max_num_iteration = 30
-    map_features = laws_texture_energy.extract_laws_texture_map(PATH_FOLDER + name_img)
-    # print(map_features.shape)
-    # print(map_features)
     kmeans_clustering.cluster_output_image_label(\
         name_img[:-4]+SUFFIX_TEXTURE_LAW, map_features, k, max_num_iteration)
 

@@ -138,7 +138,8 @@ import kmeans_clustering
 # MAP = laws_texture_energy.extract_laws_texture_features(NAME+".jpg")
 # kmeans_clustering.cluster_output_image_label(NAME+"_laws", MAP, 4, 10)
 
-PATH_FOLDER = laws_texture_energy.PATH_FOLDER
+PATH_FOLDER = laws_texture_energy.URI_SAMPLES
+
 
 def main():
     """ test """
@@ -176,7 +177,8 @@ def main():
     # a = np.array([[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3,3 ], [4, 4, 4, 4]])
     # print(a[0:3, 0:2])
 
-    # a = np.array([[13, 11,  8,  7], [11,  3, 11, 14], [16, 12, 14, 10], [15,  6, 10,  5]], dtype=np.float64)
+    # a = np.array([[13, 11,  8,  7], [11,  3, 11, 14], [16, 12, 14, 10], [15,  6, 10,  5]],
+    #   \dtype=np.float64)
     # kernel = np.ones(9, dtype=np.float64).reshape(3, 3)
     # kernel = kernel*(-2)
     # print(ndimage.convolve(a, kernel))
@@ -196,7 +198,9 @@ def main():
 
     # samples = ["Leaves", "Leaves2", "Grass", "Brick", "Brick2", "Stone"]
     # for sample in samples:
-    #     mean_features = laws_texture_energy.extract_laws_texture_mean("img_sample/"+sample+".png")
+    #     img = Image.open("img_sample/"+sample+".png")
+    #     mtrx_img = np.array(img)
+    #     mean_features = laws_texture_energy.extract_laws_energy_mean(mtrx_img)
     #     print(sample, 'ee:', mean_features[6], 'ss:', mean_features[3], 'rr:', mean_features[4])
 
     # print("dshajd.jgp"[:-4])
@@ -204,11 +208,25 @@ def main():
     # img = Image.open("Tiger_laws_kc.png")
     # print(img.mode)
 
-    ary = np.arange(99)
-    # ary = [1, 2, 3, 4, 5]
-    ary = ary[2:]
-    ary = ary[0::3]
-    print(ary)
+    # ary = np.arange(99)
+    # # ary = [1, 2, 3, 4, 5]
+    # ary = ary[2:]
+    # ary = ary[0::3]
+    # print(ary)
+
+    # a = np.array([-1, -2, 0, 2, 1])
+    # b = np.array([1, 4, 6, 4, 1])
+    # print(np.dot(a, b))
+
+    # img = Image.open("img_sample/Stefan with Art.jpg")
+    # print(img.mode)
+
+    # a = np.ones((3,9,3))
+    # a[0] = a[0].ravel()
+    # print(a.flatten())
+    # print(isinstance(r, np.ndarray))
+
+    
 
 if __name__ == "__main__":
     main()
