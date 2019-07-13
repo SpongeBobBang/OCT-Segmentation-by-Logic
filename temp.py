@@ -263,17 +263,23 @@ def main():
     # plt.imshow(img)
     # plt.show()
 
-    name = "Abrams_Post_114_1_1_0_1_laws_kc.png"
-    mtrx = image_factory.get_matrix_from_uri(name)
-    mtrx_avg = image_factory.average_region(mtrx, 20)
-    image_factory.show_matrix(mtrx_avg)
-    mtrx_cluster = kmeans_clustering.get_kmeans_cluster_matrix(mtrx_avg, 3, 30)
-    image_factory.write_image_by_matrix(mtrx_cluster, name, tag="avg_kc")
+    # name = "Abrams_Post_114_1_1_0_1_laws_kc.png"
+    # mtrx = image_factory.get_matrix_from_uri(name)
+    # mtrx_avg = image_factory.average_region(mtrx, 20)
+    # image_factory.show_matrix(mtrx_avg)
+    # mtrx_cluster = kmeans_clustering.get_kmeans_cluster_matrix(mtrx_avg, 3, 30)
+    # image_factory.write_image_by_matrix(mtrx_cluster, name, tag="avg_kc")
 
     # mtrx = image_factory.get_matrix_from_uri("Abrams_Post_114_1_1_0_1.jpg")
     # mtrx = image_factory.threshold(mtrx, 127)
     # print(type(mtrx))
     # image_factory.show_matrix(mtrx)
+
+    # dic = {1: 3, 2:6}
+    # print(3 in dic)
+    # print(2 in dic)
+
+    print(np.clip(-1, 1, 5))
 
 if __name__ == "__main__":
     main()

@@ -3,7 +3,8 @@
 from PIL import Image
 import numpy as np
 from scipy import ndimage
-import matplotlib.pyplot as plot
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
 import cv2
 
 class _ImageConvolution():
@@ -11,15 +12,15 @@ class _ImageConvolution():
     def convolve(self, matrix_image, kernel):
         """ Convoluve an image matrix of potentially multiple dimension vectors by a kernel """
         if is_grayscale_matrix(matrix_image):
-            return self.convolve_1_channel(matrix_image, kernel)
+            return self._convolve_1_channel(matrix_image, kernel)
         else:
             hght, wdth = matrix_image.shape[:2]
             mtrxs_img = np.split(matrix_image, [1, 2], axis=2)
             for i, mtrx_img_channel in enumerate(mtrxs_img):
                 mtrx_img_channel = mtrx_img_channel.flatten().reshape(hght, wdth)
-                mtrxs_img[i] = self.convolve_1_channel(mtrx_img_channel, kernel)
+                mtrxs_img[i] = self._convolve_1_channel(mtrx_img_channel, kernel)
             return np.stack(mtrxs_img, axis=2).reshape(hght, wdth, 3)
-    def convolve_1_channel(self, matrix, kernel):
+    def _convolve_1_channel(self, matrix, kernel):
         """ Convolve a matrix with elements of single dimension """
         return ndimage.convolve(matrix, kernel)
     def remove_illumination(self, matrix_image, dimension_kernel):
@@ -73,7 +74,7 @@ def convolve(matrix_image, kernel):
 
 def remove_illumination(matrix_image, dimension_kernel):
     """ Remove illumination by region """
-    return _ImageConvolution().convolve(matrix_image, dimension_kernel)
+    return _ImageConvolution().remove_illumination(matrix_image, dimension_kernel)
 
 def sum_region(matrix_image, dimension_kernel):
     """ Convolve image by summing region """
@@ -89,7 +90,7 @@ def get_average_matrix(shape, matrices):
 
 def threshold(matrix, value_threshold):
     """ Binarize a matrix of image by thresholding """
-    return cv2.threshold(matrix, value_threshold, 255, cv2.THRESH_BINARY)
+    return cv2.threshold(matrix, value_threshold, 2**8 - 1, cv2.THRESH_BINARY)[1]
 
 class _GaussianFilter():
     """ Operations with Gausisan filter """
@@ -147,16 +148,19 @@ def get_laws_waveforms():
     """ Get the convolutional wavrforms for laws texture analysis, order of 5 """
     return _LawsWaveforms().wvfrms
 
+FIGURE_SIZE = (21.6, 10.8)
+
 class _ImageInterface():
     """ Handles interface between fiiles and runtime matrices of images """
     def show_matrix(self, matrix):
         """ Show the image equivalent of a matrix """
-        plot.figure(figsize=(21.6, 10.8))
+        plt.figure(figsize=FIGURE_SIZE)
         if is_grayscale_matrix(matrix):
-            plot.imshow(matrix, cmap='gray')
+            plt.imshow(matrix, cmap='gray')
         else:
-            plot.imshow(matrix)
-        plot.show()
+            plt.imshow(matrix)
+        plt.ion()
+        plt.show()
     def get_matrix_from_uri(self, name_image, path):
         """ Get ndarray from uri of an image """
         img = Image.open(path+name_image)
@@ -165,12 +169,12 @@ class _ImageInterface():
         """ Write an png image file """
         img_lbl = Image.fromarray(matrix)
         uri = path+name_image
-        if self.__has_tag(tag):
+        def __has_tag(tag):
+            """ Check if the string is a valid tag """
+            return tag != ''
+        if __has_tag(tag):
             uri += "_"+tag
         img_lbl.save(uri+".png")
-    def __has_tag(self, tag):
-        """ Check if the string is a valid tag """
-        return tag != ''
 
 def show_matrix(matrix):
     """ Show image from a matrix """
@@ -183,14 +187,46 @@ def get_matrix_from_uri(name_image, path=""):
 def write_image_by_matrix(matrix, name_image, path='', tag=''):
     """ Write a image file of labels, given a matrix of label values """
     # Take out image file extension
-    return _ImageInterface().write_image_by_matrix(matrix, name_image[:-4], path, tag)
+    return _ImageInterface().write_image_by_matrix(matrix, name_image, path, tag)
+
+KEY_OFFSET = {'left': -1, 'right': 1}
+
+def __average_and_threshold(matrix_image, dimension_kernel, value_threshold):
+    return threshold(average_region(matrix_image, dimension_kernel), value_threshold)
+
+def visualize_threshold(matrix):
+    """ Visualize the effect of change of threshold value to segmentation """
+    lmt_bot = 0
+    lmt_top = 2**8 - 1
+    thrshld_intl = lmt_top/2
+    fgr, axes_img = plt.subplots(figsize=FIGURE_SIZE)
+    img = axes_img.imshow(threshold(matrix, thrshld_intl), cmap='gray')
+    axes_slider = plt.axes([0.1, 0.03, 0.8, 0.02])
+    slider = Slider(axes_slider, "Threshold", lmt_bot, lmt_top, valinit=thrshld_intl, valstep=1, color='blue')
+    stt_cur = 0 # Specify current state, threshold or average size is the keyboard pointing to 
+    def update_threshold_by_val(val):
+        img.set_array(threshold(matrix, val))
+    def slider_update(val):
+        update_threshold_by_val(slider.val)
+    def key_update(event):
+        key = event.key
+        if key in KEY_OFFSET:
+            val_new = slider.val + KEY_OFFSET[key]
+            val_new = np.clip(val_new, lmt_bot, lmt_top)
+            slider.set_val(val_new)
+    slider.on_changed(slider_update)
+    fgr.canvas.mpl_connect('key_press_event', key_update)
+    plt.show()
 
 def main():
     """ unit test """
-    name_img = "Stefan with Art.jpg"
-    mtrx = get_matrix_from_uri(name_img, "img_sample/")
-    mtrx = filter_by_gaussian(mtrx, 5)
-    write_image_by_matrix(mtrx, name_img)
+    # name_img = "Stefan with Art.jpg"
+    # mtrx = get_matrix_from_uri(name_img, "img_sample/")
+    # mtrx = filter_by_gaussian(mtrx, 5)
+    # write_image_by_matrix(mtrx, name_img)
+
+    mtrx = get_matrix_from_uri("Abrams_Post_114_1_1_0_1_laws_kc_avg.png")
+    visualize_threshold(mtrx)
 
 if __name__ == "__main__":
     main()

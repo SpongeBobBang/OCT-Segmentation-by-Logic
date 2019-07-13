@@ -90,7 +90,7 @@ def get_laws_enery_mean_1_channel(matrix_energies):
     matrix_energies = matrix_energies.reshape(hght*wdth, dmnsn)
     return np.mean(matrix_energies, axis=1)
 
-URI_SAMPLES = "D:/UMD/Career/Research Assistant/Segmentation by Logic/Code/img_sample/"
+URI_SAMPLES = "img_sample/"
 
 def main():
     """ module test """
