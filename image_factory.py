@@ -189,7 +189,11 @@ def write_image_by_matrix(matrix, name_image, path='', tag=''):
     # Take out image file extension
     return _ImageInterface().write_image_by_matrix(matrix, name_image, path, tag)
 
-KEY_OFFSET = {'left': -1, 'right': 1}
+KEYS_OFFSET = {'left': -1, 'right': +1}
+KEYS_VALUE = ['left', 'right']
+KEYS_STATE = ['up', 'down']
+STATE_AVERAGE = 0
+STATE_THRESHOLD = 1
 
 def __average_and_threshold(matrix_image, dimension_kernel, value_threshold):
     return threshold(average_region(matrix_image, dimension_kernel), value_threshold)
@@ -203,15 +207,14 @@ def visualize_threshold(matrix):
     img = axes_img.imshow(threshold(matrix, thrshld_intl), cmap='gray')
     axes_slider = plt.axes([0.1, 0.03, 0.8, 0.02])
     slider = Slider(axes_slider, "Threshold", lmt_bot, lmt_top, valinit=thrshld_intl, valstep=1, color='blue')
-    stt_cur = 0 # Specify current state, threshold or average size is the keyboard pointing to 
     def update_threshold_by_val(val):
         img.set_array(threshold(matrix, val))
     def slider_update(val):
         update_threshold_by_val(slider.val)
     def key_update(event):
         key = event.key
-        if key in KEY_OFFSET:
-            val_new = slider.val + KEY_OFFSET[key]
+        if key in KEYS_OFFSET:
+            val_new = slider.val + KEYS_OFFSET[key]
             val_new = np.clip(val_new, lmt_bot, lmt_top)
             slider.set_val(val_new)
     slider.on_changed(slider_update)

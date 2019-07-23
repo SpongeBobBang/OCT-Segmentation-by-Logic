@@ -16,19 +16,20 @@ TAG_KMEANS = kmeans_clustering.TAG
 
 OCT = "Abrams_Post_114_1_1_0_1"
 OCT_LK = "Abrams_Post_114_1_1_0_1_laws_kc"
+OCT_LK5 = "Abrams_Post_114_1_1_0_1_laws_kc5"
 ME = "Stefan with Art"
 BENCH_T = "Tiger"
 BENCH_F = "Flag"
 BENCH_S = "Benchmark_s"
 URI_IMG = {OCT: "Abrams_Post_114_1_1_0_1.jpg", OCT_LK: "Abrams_Post_114_1_1_0_1_laws_kc.png", \
+    OCT_LK5: "Abrams_Post_114_1_1_0_1_laws_kc5.png", \
     ME: "Stefan with Art.jpg", BENCH_T: "Tiger.png", BENCH_F: "Flag.png", BENCH_S: "Sunflower.png"}
-
 
 class Test_VisualizeResults(unittest.TestCase):
     """ Try quantify texture and segment, given sample OCT image """
     def test_laws_kc(self):
         """ Quantify texture with laws' texture energy measure, segment with k-means clusterting """
-        name = OCT
+        name = OCT_LK5
         uri = URI_IMG[name]
         k = 5
         max_num_iteration = 30
